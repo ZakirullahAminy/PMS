@@ -7,14 +7,17 @@ app.use(cors());
 app.use(express.json());
 
 mongoose.connect("mongodb://localhost:27017/ProductCategory");
+// mongoose.connect(
+//   "mongodb+srv://hajiaminy8:zaFgIlgeNo8I0M9y@cluster0.fc7rr1k.mongodb.net/ProductCategory"
+// );
 
 const categorySchema = new mongoose.Schema({
   name: { type: String, required: true, unique: true },
 });
 
 const productSchema = new mongoose.Schema({
-  name: String,
-  description: String,
+  name: { type: String, required: true },
+  description: { type: String, required: true },
   imageUrl: String,
   price: Number,
   category: { type: mongoose.Schema.Types.ObjectId, ref: "Category" },
@@ -33,6 +36,7 @@ app.post("/api/categories", async (req, res) => {
     res.status(500).json({ message: "Error adding category" });
   }
 });
+
 // Update category
 app.put("/api/categories/:id", async (req, res) => {
   try {
