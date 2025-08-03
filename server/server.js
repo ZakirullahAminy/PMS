@@ -11,6 +11,7 @@ mongoose.connect("mongodb://localhost:27017/ProductCategory");
 const categorySchema = new mongoose.Schema({
   name: { type: String, required: true, unique: true },
 });
+
 const productSchema = new mongoose.Schema({
   name: String,
   description: String,
@@ -29,11 +30,10 @@ app.post("/api/categories", async (req, res) => {
     await category.save();
     res.status(201).json(category);
   } catch (error) {
-    console.error(error);
     res.status(500).json({ message: "Error adding category" });
   }
 });
-// Update category name
+// Update category
 app.put("/api/categories/:id", async (req, res) => {
   try {
     const updated = await Category.findByIdAndUpdate(
@@ -47,7 +47,7 @@ app.put("/api/categories/:id", async (req, res) => {
   }
 });
 
-// List categories
+// Get categories
 app.get("/api/categories", async (req, res) => {
   try {
     const categories = await Category.find();
@@ -57,7 +57,7 @@ app.get("/api/categories", async (req, res) => {
   }
 });
 
-// Delete category only if no products
+// Delete category if no products
 app.delete("/api/categories/:id", async (req, res) => {
   try {
     const products = await Product.find({ category: req.params.id });
@@ -71,10 +71,9 @@ app.delete("/api/categories/:id", async (req, res) => {
   }
 });
 
-// Create product with category validation
+// Create product
 app.post("/api/products", async (req, res) => {
   const { category } = req.body;
-
   if (!category || !mongoose.Types.ObjectId.isValid(category)) {
     return res.status(400).json({ message: "Invalid category ID" });
   }
@@ -84,22 +83,42 @@ app.post("/api/products", async (req, res) => {
     await product.save();
     res.status(201).json(product);
   } catch (error) {
-    console.error(error);
     res.status(500).json({ message: "Error adding product" });
   }
 });
 
-// List all products
+// GET products with filter, search, and pagination
 app.get("/api/products", async (req, res) => {
   try {
-    const products = await Product.find().populate("category");
-    res.json(products);
+    const { category, search, page = 1, limit = 9 } = req.query;
+
+    const query = {};
+    if (category) query.category = category;
+    if (search) {
+      const regex = new RegExp(search, "i");
+      query.$or = [{ name: regex }, { description: regex }];
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const total = await Product.countDocuments(query);
+    const products = await Product.find(query)
+      .populate("category")
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    res.json({
+      products,
+      total,
+      page: parseInt(page),
+      totalPages: Math.ceil(total / limit),
+    });
   } catch (error) {
     res.status(500).json({ message: "Error fetching products" });
   }
 });
 
-// Update product info
+// Update product
 app.put("/api/products/:id", async (req, res) => {
   try {
     const updated = await Product.findByIdAndUpdate(req.params.id, req.body, {
@@ -118,18 +137,6 @@ app.delete("/api/products/:id", async (req, res) => {
     res.json({ message: "Deleted" });
   } catch (error) {
     res.status(500).json({ message: "Error deleting product" });
-  }
-});
-
-// Filter products by category
-app.get("/api/products/filter/:categoryId", async (req, res) => {
-  try {
-    const products = await Product.find({
-      category: req.params.categoryId,
-    }).populate("category");
-    res.json(products);
-  } catch (error) {
-    res.status(500).json({ message: "Error filtering products" });
   }
 });
 

@@ -5,6 +5,8 @@ function Product() {
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [editingId, setEditingId] = useState(null);
   const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [newCategory, setNewCategory] = useState("");
@@ -18,14 +20,25 @@ function Product() {
   });
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/products")
-      .then((res) => res.json())
-      .then(setProducts);
-
     fetch("http://localhost:5000/api/categories")
       .then((res) => res.json())
       .then(setCategories);
   }, []);
+
+  useEffect(() => {
+    const url = new URL("http://localhost:5000/api/products");
+    if (selectedCategory) url.searchParams.append("category", selectedCategory);
+    if (searchQuery) url.searchParams.append("search", searchQuery);
+    url.searchParams.append("page", page);
+    url.searchParams.append("limit", 9);
+
+    fetch(url.toString())
+      .then((res) => res.json())
+      .then((data) => {
+        setProducts(data.products);
+        setTotalPages(data.totalPages);
+      });
+  }, [selectedCategory, searchQuery, page]);
 
   const refreshCategories = async () => {
     const res = await fetch("http://localhost:5000/api/categories");
@@ -35,42 +48,29 @@ function Product() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const method = editingId ? "PUT" : "POST";
+    const endpoint = editingId
+      ? `http://localhost:5000/api/products/${editingId}`
+      : "http://localhost:5000/api/products";
 
-    if (editingId) {
-      const res = await fetch(
-        `http://localhost:5000/api/products/${editingId}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
-        }
-      );
-      if (res.ok) {
-        const updatedProd = await res.json();
-        setProducts((prev) =>
-          prev.map((p) => (p._id === editingId ? updatedProd : p))
-        );
-        setEditingId(null);
-      }
-    } else {
-      const res = await fetch("http://localhost:5000/api/products", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-      if (res.ok) {
-        const newProd = await res.json();
-        setProducts((prev) => [...prev, newProd]);
-      }
-    }
-
-    setFormData({
-      name: "",
-      description: "",
-      imageUrl: "",
-      price: "",
-      category: "",
+    const res = await fetch(endpoint, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formData),
     });
+
+    if (res.ok) {
+      setFormData({
+        name: "",
+        description: "",
+        imageUrl: "",
+        price: "",
+        category: "",
+      });
+      setEditingId(null);
+      setPage(1); // refresh to page 1
+      const data = await res.json();
+    }
   };
 
   const handleDelete = async (id) => {
@@ -78,7 +78,7 @@ function Product() {
     await fetch(`http://localhost:5000/api/products/${id}`, {
       method: "DELETE",
     });
-    setProducts(products.filter((p) => p._id !== id));
+    setProducts((prev) => prev.filter((p) => p._id !== id));
   };
 
   const handleEdit = (prod) => {
@@ -97,51 +97,31 @@ function Product() {
     e.preventDefault();
     if (!newCategory.trim()) return;
 
-    if (editingCategoryId) {
-      // Edit existing category
-      const res = await fetch(
-        `http://localhost:5000/api/categories/${editingCategoryId}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: newCategory }),
-        }
-      );
-      if (res.ok) {
-        await refreshCategories();
-        setNewCategory("");
-        setEditingCategoryId(null);
-      }
-    } else {
-      // Create new category
-      const res = await fetch("http://localhost:5000/api/categories", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newCategory }),
-      });
+    const method = editingCategoryId ? "PUT" : "POST";
+    const endpoint = editingCategoryId
+      ? `http://localhost:5000/api/categories/${editingCategoryId}`
+      : "http://localhost:5000/api/categories";
 
-      if (res.ok) {
-        const created = await res.json();
-        setCategories((prev) => [...prev, created]);
-        setNewCategory("");
-      }
+    const res = await fetch(endpoint, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newCategory }),
+    });
+
+    if (res.ok) {
+      await refreshCategories();
+      setNewCategory("");
+      setEditingCategoryId(null);
     }
-  };
-
-  const handleEditCategory = (cat) => {
-    setNewCategory(cat.name);
-    setEditingCategoryId(cat._id);
   };
 
   const handleDeleteCategory = async (id) => {
     if (!window.confirm("Delete this category?")) return;
-
     const res = await fetch(`http://localhost:5000/api/categories/${id}`, {
       method: "DELETE",
     });
 
     const data = await res.json();
-
     if (res.ok) {
       await refreshCategories();
     } else {
@@ -151,7 +131,9 @@ function Product() {
 
   return (
     <div className="p-6">
-       <h2 className="text-lg font-bold mb-2">PMS</h2>
+      <h2 className="text-lg font-bold mb-2">PMS</h2>
+
+      {/* Add/Edit Category */}
       <div className="my-6">
         <h1 className="text-xl font-bold">
           {editingCategoryId ? "Edit Category" : "Add New Category"}
@@ -189,7 +171,7 @@ function Product() {
         </form>
       </div>
 
-      {/* Category List with Edit/Delete */}
+      {/* Category List */}
       <div className="mb-6">
         <h2 className="text-lg font-semibold mb-2">All Categories</h2>
         <ul className="space-y-1">
@@ -198,7 +180,10 @@ function Product() {
               <span>{cat.name}</span>
               <div className="flex gap-2">
                 <button
-                  onClick={() => handleEditCategory(cat)}
+                  onClick={() => {
+                    setNewCategory(cat.name);
+                    setEditingCategoryId(cat._id);
+                  }}
                   className="text-sm bg-yellow-500 text-white px-2 py-1 rounded"
                 >
                   Edit
@@ -215,7 +200,7 @@ function Product() {
         </ul>
       </div>
 
-      {/* Add and edit Product */}
+      {/* Add/Edit Product */}
       <h1 className="text-xl font-bold">
         {editingId ? "Edit Product" : "Add Product"}
       </h1>
@@ -245,9 +230,7 @@ function Product() {
         <input
           type="number"
           value={formData.price}
-          onChange={(e) =>
-            setFormData({ ...formData, price: e.target.value })
-          }
+          onChange={(e) => setFormData({ ...formData, price: e.target.value })}
           placeholder="Price"
           className="border p-2 w-full"
         />
@@ -293,11 +276,14 @@ function Product() {
         </div>
       </form>
 
-      {/* Filter and Search */}
+      {/* Filter & Search */}
       <div className="mt-6">
         <h1 className="text-xl font-bold my-6">Filter by Category</h1>
         <select
-          onChange={(e) => setSelectedCategory(e.target.value)}
+          onChange={(e) => {
+            setSelectedCategory(e.target.value);
+            setPage(1);
+          }}
           className="border p-2 w-52"
         >
           <option value="">All</option>
@@ -308,55 +294,69 @@ function Product() {
           ))}
         </select>
 
-        {/* Search */}
         <div className="mt-4">
           <input
             type="text"
             placeholder="Search products..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setPage(1);
+            }}
             className="border p-2 w-full md:w-1/2"
           />
         </div>
 
         {/* Product List */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-          {products
-            .filter(
-              (p) =>
-                (!selectedCategory || p.category?._id === selectedCategory) &&
-                (p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  p.description
-                    .toLowerCase()
-                    .includes(searchQuery.toLowerCase()))
-            )
-            .map((prod) => (
-              <div key={prod._id} className="border p-4 rounded shadow">
-                <img
-                  src={prod.imageUrl}
-                  alt={prod.name}
-                  className="h-40 w-full object-cover mb-2"
-                />
-                <h3 className="font-bold">{prod.name}</h3>
-                <p>{prod.description}</p>
-                <p className="text-sm text-gray-600">${prod.price}</p>
-                <p className="text-xs text-gray-400">{prod.category?.name}</p>
-                <div className="flex gap-2 mt-2">
-                  <button
-                    onClick={() => handleEdit(prod)}
-                    className="bg-yellow-500 text-white px-3 py-1 rounded"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(prod._id)}
-                    className="bg-red-500 text-white px-3 py-1 rounded"
-                  >
-                    Delete
-                  </button>
-                </div>
+          {products.map((prod) => (
+            <div key={prod._id} className="border p-4 rounded shadow">
+              <img
+                src={prod.imageUrl}
+                alt={prod.name}
+                className="h-40 w-full object-cover mb-2"
+              />
+              <h3 className="font-bold">{prod.name}</h3>
+              <p>{prod.description}</p>
+              <p className="text-sm text-gray-600">${prod.price}</p>
+              <p className="text-xs text-gray-400">{prod.category?.name}</p>
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={() => handleEdit(prod)}
+                  className="bg-yellow-500 text-white px-3 py-1 rounded"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDelete(prod._id)}
+                  className="bg-red-500 text-white px-3 py-1 rounded"
+                >
+                  Delete
+                </button>
               </div>
-            ))}
+            </div>
+          ))}
+        </div>
+
+        {/* Pagination */}
+        <div className="flex justify-center mt-4 gap-2">
+          <button
+            disabled={page <= 1}
+            onClick={() => setPage((p) => p - 1)}
+            className="px-4 py-2 bg-gray-300 rounded disabled:opacity-50"
+          >
+            Prev
+          </button>
+          <span className="px-4 py-2">
+            Page {page} of {totalPages}
+          </span>
+          <button
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => p + 1)}
+            className="px-4 py-2 bg-gray-300 rounded disabled:opacity-50"
+          >
+            Next
+          </button>
         </div>
       </div>
     </div>
