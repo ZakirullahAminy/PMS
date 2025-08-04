@@ -1,16 +1,15 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const bcrypt = require("bcryptjs");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 mongoose.connect("mongodb://localhost:27017/ProductCategory");
-// mongoose.connect(
-//   "mongodb+srv://hajiaminy8:zaFgIlgeNo8I0M9y@cluster0.fc7rr1k.mongodb.net/ProductCategory"
-// );
 
+// Schemas
 const categorySchema = new mongoose.Schema({
   name: { type: String, required: true, unique: true },
 });
@@ -23,10 +22,40 @@ const productSchema = new mongoose.Schema({
   category: { type: mongoose.Schema.Types.ObjectId, ref: "Category" },
 });
 
+const userSchema = new mongoose.Schema({
+  username: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  role: { type: String, enum: ["admin", "user"], default: "user" },
+});
+
 const Category = mongoose.model("Category", categorySchema);
 const Product = mongoose.model("Product", productSchema);
+const User = mongoose.model("User", userSchema);
 
-// Create category
+// User Login/Register
+app.post("/api/login", async (req, res) => {
+  const { username, password, role } = req.body;
+  try {
+    let user = await User.findOne({ username });
+
+    if (!user) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      user = new User({ username, password: hashedPassword, role });
+      await user.save();
+      return res.status(201).json({ username: user.username, role: user.role });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch)
+      return res.status(400).json({ message: "Incorrect password" });
+
+    res.json({ username: user.username, role: user.role });
+  } catch (err) {
+    res.status(500).json({ message: "Login error" });
+  }
+});
+
+// CRUD for categories and products (same as your original code)
 app.post("/api/categories", async (req, res) => {
   try {
     const category = new Category(req.body);
@@ -37,7 +66,6 @@ app.post("/api/categories", async (req, res) => {
   }
 });
 
-// Update category
 app.put("/api/categories/:id", async (req, res) => {
   try {
     const updated = await Category.findByIdAndUpdate(
@@ -51,7 +79,6 @@ app.put("/api/categories/:id", async (req, res) => {
   }
 });
 
-// Get categories
 app.get("/api/categories", async (req, res) => {
   try {
     const categories = await Category.find();
@@ -61,7 +88,6 @@ app.get("/api/categories", async (req, res) => {
   }
 });
 
-// Delete category if no products
 app.delete("/api/categories/:id", async (req, res) => {
   try {
     const products = await Product.find({ category: req.params.id });
@@ -75,7 +101,6 @@ app.delete("/api/categories/:id", async (req, res) => {
   }
 });
 
-// Create product
 app.post("/api/products", async (req, res) => {
   const { category } = req.body;
   if (!category || !mongoose.Types.ObjectId.isValid(category)) {
@@ -91,7 +116,6 @@ app.post("/api/products", async (req, res) => {
   }
 });
 
-// GET products with filter, search, and pagination
 app.get("/api/products", async (req, res) => {
   try {
     const { category, search, page = 1, limit = 9 } = req.query;
@@ -122,7 +146,6 @@ app.get("/api/products", async (req, res) => {
   }
 });
 
-// Update product
 app.put("/api/products/:id", async (req, res) => {
   try {
     const updated = await Product.findByIdAndUpdate(req.params.id, req.body, {
@@ -134,7 +157,6 @@ app.put("/api/products/:id", async (req, res) => {
   }
 });
 
-// Delete product
 app.delete("/api/products/:id", async (req, res) => {
   try {
     await Product.findByIdAndDelete(req.params.id);
@@ -145,4 +167,4 @@ app.delete("/api/products/:id", async (req, res) => {
 });
 
 const PORT = 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

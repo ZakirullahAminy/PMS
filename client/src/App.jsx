@@ -1,13 +1,16 @@
-import Card from "./Card";
+// App.jsx
+import { useState } from "react";
 import Product from "./Product";
+import Login from "./Login";
 
 function App() {
-  return (
-    <>
-      {/* <Card /> */}
-      <Product />
-    </>
-  );
+  const [user, setUser] = useState(null);
+
+  if (!user) {
+    return <Login onLogin={setUser} />;
+  }
+
+  return <Product user={user} />;
 }
 
 export default App;

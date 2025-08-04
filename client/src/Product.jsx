@@ -1,6 +1,17 @@
 import { useEffect, useState } from "react";
+import AOS from "aos";
+import "aos/dist/aos.css";
 
-function Product() {
+function Product({ user }) {
+  useEffect(() => {
+    AOS.init({
+      duration: 800,
+      easing: "ease-in-out",
+      once: false,
+    });
+  }, []);
+  const isAdmin = user.role === "admin";
+
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -10,6 +21,9 @@ function Product() {
   const [editingId, setEditingId] = useState(null);
   const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [newCategory, setNewCategory] = useState("");
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -68,8 +82,7 @@ function Product() {
         category: "",
       });
       setEditingId(null);
-      setPage(1); // refresh to page 1
-      const data = await res.json();
+      setPage(1);
     }
   };
 
@@ -130,172 +143,238 @@ function Product() {
   };
 
   return (
-    <div className="p-6">
-      <h2 className="text-lg font-bold mb-2">PMS</h2>
+    <div className="p-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+      {/* Header with AOS animation */}
+      <div
+        data-aos="fade-down"
+        data-aos-duration="500"
+        className="flex justify-between items-center mb-8 p-6 bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow"
+      >
+        <h2 className="text-2xl font-bold text-gray-800">
+          Welcome, <span className="text-blue-600">{user.username}</span>
+          <span className="text-xs ml-2 bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 px-3 py-1 rounded-full uppercase tracking-wider">
+            {user.role}
+          </span>
+        </h2>
 
-      {/* Add/Edit Category */}
-      <div className="my-6">
-        <h1 className="text-xl font-bold">
-          {editingCategoryId ? "Edit Category" : "Add New Category"}
-        </h1>
-        <form
-          onSubmit={handleAddCategory}
-          className="flex flex-col gap-2 items-start mt-2"
+        <button
+          onClick={() => window.location.reload()}
+          className="flex items-center gap-1 text-red-500 hover:text-red-700 font-medium transition-all hover:gap-2"
         >
-          <input
-            value={newCategory}
-            onChange={(e) => setNewCategory(e.target.value)}
-            placeholder="Category name"
-            className="border p-2 w-full"
-          />
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              className="bg-green-600 text-white px-4 py-2 rounded"
-            >
-              {editingCategoryId ? "Update" : "Add"}
-            </button>
-            {editingCategoryId && (
-              <button
-                type="button"
-                onClick={() => {
-                  setNewCategory("");
-                  setEditingCategoryId(null);
-                }}
-                className="bg-gray-500 text-white px-4 py-2 rounded"
-              >
-                Cancel
-              </button>
-            )}
-          </div>
-        </form>
+          Logout <span className="text-lg">→</span>
+        </button>
       </div>
 
-      {/* Category List */}
-      <div className="mb-6">
-        <h2 className="text-lg font-semibold mb-2">All Categories</h2>
-        <ul className="space-y-1">
-          {categories.map((cat) => (
-            <li key={cat._id} className="flex items-center justify-between">
-              <span>{cat.name}</span>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    setNewCategory(cat.name);
-                    setEditingCategoryId(cat._id);
-                  }}
-                  className="text-sm bg-yellow-500 text-white px-2 py-1 rounded"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDeleteCategory(cat._id)}
-                  className="text-sm bg-red-500 text-white px-2 py-1 rounded"
-                >
-                  Delete
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* Add/Edit Product */}
-      <h1 className="text-xl font-bold">
-        {editingId ? "Edit Product" : "Add Product"}
-      </h1>
-      <form onSubmit={handleSubmit} className="space-y-2">
-        <input
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          placeholder="Name"
-          className="border p-2 w-full"
-        />
-        <input
-          value={formData.description}
-          onChange={(e) =>
-            setFormData({ ...formData, description: e.target.value })
-          }
-          placeholder="Description"
-          className="border p-2 w-full"
-        />
-        <input
-          value={formData.imageUrl}
-          onChange={(e) =>
-            setFormData({ ...formData, imageUrl: e.target.value })
-          }
-          placeholder="Image URL"
-          className="border p-2 w-full"
-        />
-        <input
-          type="number"
-          value={formData.price}
-          onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-          placeholder="Price"
-          className="border p-2 w-full"
-        />
-        <select
-          value={formData.category}
-          onChange={(e) =>
-            setFormData({ ...formData, category: e.target.value })
-          }
-          className="border p-2 w-full"
-        >
-          <option value="">Select Category</option>
-          {categories.map((cat) => (
-            <option key={cat._id} value={cat._id}>
-              {cat.name}
-            </option>
-          ))}
-        </select>
-        <div className="flex gap-2">
-          <button
-            type="submit"
-            className="bg-blue-500 text-white px-4 py-2 rounded"
+      {isAdmin && (
+        <div className="space-y-8">
+          {/* Category Section */}
+          <div
+            data-aos="fade-up"
+            data-aos-delay="100"
+            className="bg-white p-6 rounded-xl shadow-md border border-gray-100 hover:border-blue-100 transition-all"
           >
-            {editingId ? "Update" : "Add Product"}
-          </button>
-          {editingId && (
-            <button
-              type="button"
-              onClick={() => {
-                setFormData({
-                  name: "",
-                  description: "",
-                  imageUrl: "",
-                  price: "",
-                  category: "",
-                });
-                setEditingId(null);
-              }}
-              className="bg-gray-500 text-white px-4 py-2 rounded"
-            >
-              Cancel
-            </button>
-          )}
+            <h1 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+              {editingCategoryId ? (
+                <span className="text-yellow-500">✏️</span>
+              ) : (
+                <span className="text-green-500">➕</span>
+              )}
+              {editingCategoryId ? "Edit Category" : "Add New Category"}
+            </h1>
+            <form onSubmit={handleAddCategory} className="space-y-4">
+              <input
+                required
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                placeholder="Category name"
+                className="border-2 border-gray-200 p-3 w-full rounded-xl focus:border-blue-500 focus:ring-1 focus:ring-blue-200 focus:outline-none transition-all"
+              />
+              <div className="flex gap-3">
+                <button
+                  type="submit"
+                  className="bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all hover:from-green-600 hover:to-green-700"
+                >
+                  {editingCategoryId ? "Update" : "Add"}
+                </button>
+                {editingCategoryId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewCategory("");
+                      setEditingCategoryId(null);
+                    }}
+                    className="bg-gradient-to-r from-gray-500 to-gray-600 text-white px-6 py-3 rounded-xl hover:shadow-md transition-all"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+
+          {/* Category List */}
+          <div
+            data-aos="fade-up"
+            data-aos-delay="200"
+            className="bg-white p-6 rounded-xl shadow-md border border-gray-100"
+          >
+            <h2 className="text-xl font-semibold text-gray-800 mb-6 flex items-center gap-2">
+              <span className="text-blue-500">📦</span> All Categories
+            </h2>
+            <ul className="divide-y divide-gray-200">
+              {categories.map((cat, index) => (
+                <li
+                  key={cat._id}
+                  data-aos="fade-right"
+                  data-aos-delay={300 + index * 50}
+                  className="py-4 flex items-center justify-between hover:bg-gray-50 px-3 rounded-lg transition-colors"
+                >
+                  <span className="font-medium text-gray-700">{cat.name}</span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setNewCategory(cat.name);
+                        setEditingCategoryId(cat._id);
+                      }}
+                      className="bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-white px-4 py-2 rounded-lg text-sm transition-all shadow-sm hover:shadow-md"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteCategory(cat._id)}
+                      className="bg-gradient-to-r from-red-400 to-red-500 hover:from-red-500 hover:to-red-600 text-white px-4 py-2 rounded-lg text-sm transition-all shadow-sm hover:shadow-md"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Product Form */}
+          <div
+            data-aos="fade-up"
+            data-aos-delay="300"
+            className="bg-white p-6 rounded-xl shadow-md border border-gray-100"
+          >
+            <h1 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+              {editingId ? (
+                <span className="text-yellow-500">✏️</span>
+              ) : (
+                <span className="text-blue-500">➕</span>
+              )}
+              {editingId ? "Edit Product" : "Add Product"}
+            </h1>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <input
+                required
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+                placeholder="Name"
+                className="border-2 border-gray-200 p-3 w-full rounded-xl focus:border-blue-500 focus:ring-1 focus:ring-blue-200 focus:outline-none transition-all"
+              />
+              <input
+                required
+                value={formData.description}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
+                placeholder="Description"
+                className="border-2 border-gray-200 p-3 w-full rounded-xl focus:border-blue-500 focus:ring-1 focus:ring-blue-200 focus:outline-none transition-all"
+              />
+              <input
+                required
+                value={formData.imageUrl}
+                onChange={(e) =>
+                  setFormData({ ...formData, imageUrl: e.target.value })
+                }
+                placeholder="Image URL"
+                className="border-2 border-gray-200 p-3 w-full rounded-xl focus:border-blue-500 focus:ring-1 focus:ring-blue-200 focus:outline-none transition-all"
+              />
+              <input
+                required
+                type="number"
+                value={formData.price}
+                onChange={(e) =>
+                  setFormData({ ...formData, price: e.target.value })
+                }
+                placeholder="Price"
+                className="border-2 border-gray-200 p-3 w-full rounded-xl focus:border-blue-500 focus:ring-1 focus:ring-blue-200 focus:outline-none transition-all"
+              />
+              <select
+                required
+                value={formData.category}
+                onChange={(e) =>
+                  setFormData({ ...formData, category: e.target.value })
+                }
+                className="border-2 border-gray-200 p-3 w-full rounded-xl focus:border-blue-500 focus:ring-1 focus:ring-blue-200 focus:outline-none transition-all"
+              >
+                <option value="">Select Category</option>
+                {categories.map((cat) => (
+                  <option key={cat._id} value={cat._id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+              <div className="flex gap-3">
+                <button
+                  type="submit"
+                  className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all hover:from-blue-600 hover:to-blue-700"
+                >
+                  {editingId ? "Update" : "Add Product"}
+                </button>
+                {editingId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData({
+                        name: "",
+                        description: "",
+                        imageUrl: "",
+                        price: "",
+                        category: "",
+                      });
+                      setEditingId(null);
+                    }}
+                    className="bg-gradient-to-r from-gray-500 to-gray-600 text-white px-6 py-3 rounded-xl hover:shadow-md transition-all"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
         </div>
-      </form>
+      )}
 
-      {/* Filter & Search */}
-      <div className="mt-6">
-        <h1 className="text-xl font-bold my-6">Filter by Category</h1>
-        <select
-          onChange={(e) => {
-            setSelectedCategory(e.target.value);
-            setPage(1);
-          }}
-          className="border p-2 w-52"
-        >
-          <option value="">All</option>
-          {categories.map((cat) => (
-            <option key={cat._id} value={cat._id}>
-              {cat.name}
-            </option>
-          ))}
-        </select>
-
-        <div className="mt-4">
+      {/* Search & Filter */}
+      <div
+        data-aos="fade-up"
+        className="mt-8 bg-white p-6 rounded-xl shadow-md border border-gray-100"
+      >
+        <h1 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+          <span className="text-purple-500">🔍</span> Filter Products
+        </h1>
+        <div className="flex flex-col md:flex-row gap-4">
+          <select
+            onChange={(e) => {
+              setSelectedCategory(e.target.value);
+              setPage(1);
+            }}
+            className="border-2 border-gray-200 p-3 rounded-xl focus:border-blue-500 focus:ring-1 focus:ring-blue-200 focus:outline-none transition-all w-full md:w-64"
+          >
+            <option value="">All Categories</option>
+            {categories.map((cat) => (
+              <option key={cat._id} value={cat._id}>
+                {cat.name}
+              </option>
+            ))}
+          </select>
           <input
+            required
             type="text"
             placeholder="Search products..."
             value={searchQuery}
@@ -303,59 +382,80 @@ function Product() {
               setSearchQuery(e.target.value);
               setPage(1);
             }}
-            className="border p-2 w-full md:w-1/2"
+            className="border-2 border-gray-200 p-3 rounded-xl focus:border-blue-500 focus:ring-1 focus:ring-blue-200 focus:outline-none transition-all w-full"
           />
         </div>
 
-        {/* Product List */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-          {products.map((prod) => (
-            <div key={prod._id} className="border p-4 rounded shadow">
-              <img
-                src={prod.imageUrl}
-                alt={prod.name}
-                className="h-40 w-full object-cover mb-2"
-              />
-              <h3 className="font-bold">{prod.name}</h3>
-              <p>{prod.description}</p>
-              <p className="text-sm text-gray-600">${prod.price}</p>
-              <p className="text-xs text-gray-400">{prod.category?.name}</p>
-              <div className="flex gap-2 mt-2">
-                <button
-                  onClick={() => handleEdit(prod)}
-                  className="bg-yellow-500 text-white px-3 py-1 rounded"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDelete(prod._id)}
-                  className="bg-red-500 text-white px-3 py-1 rounded"
-                >
-                  Delete
-                </button>
+        {/* Product Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+          {products.map((prod, index) => (
+            <div
+              key={prod._id}
+              data-aos="fade-up"
+              data-aos-delay={index * 100}
+              className="border-2 border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all hover:border-blue-200 hover:-translate-y-1"
+            >
+              <div className="h-48 w-full overflow-hidden">
+                <img
+                  src={prod.imageUrl}
+                  alt={prod.name}
+                  className="h-full w-full object-cover hover:scale-105 transition-transform duration-500"
+                />
+              </div>
+              <div className="p-5">
+                <h3 className="font-bold text-lg text-gray-800 mb-1">
+                  {prod.name}
+                </h3>
+                <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+                  {prod.description}
+                </p>
+                <div className="flex justify-between items-center">
+                  <p className="text-blue-600 font-bold text-lg">
+                    ${prod.price}
+                  </p>
+                  <span className="inline-block bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 text-xs px-3 py-1 rounded-full">
+                    {prod.category?.name}
+                  </span>
+                </div>
+                {isAdmin && (
+                  <div className="flex gap-2 mt-4">
+                    <button
+                      onClick={() => handleEdit(prod)}
+                      className="bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-white px-4 py-2 rounded-lg text-sm transition-all"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(prod._id)}
+                      className="bg-gradient-to-r from-red-400 to-red-500 hover:from-red-500 hover:to-red-600 text-white px-4 py-2 rounded-lg text-sm transition-all"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           ))}
         </div>
 
         {/* Pagination */}
-        <div className="flex justify-center mt-4 gap-2">
+        <div className="flex justify-center mt-8 gap-2">
           <button
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
-            className="px-4 py-2 bg-gray-300 rounded disabled:opacity-50"
+            className="px-5 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg disabled:opacity-50 transition-all flex items-center gap-1 hover:gap-2"
           >
-            Prev
+            ← <span>Prev</span>
           </button>
-          <span className="px-4 py-2">
+          <span className="px-5 py-2 text-gray-700 bg-gray-100 rounded-lg">
             Page {page} of {totalPages}
           </span>
           <button
             disabled={page >= totalPages}
             onClick={() => setPage((p) => p + 1)}
-            className="px-4 py-2 bg-gray-300 rounded disabled:opacity-50"
+            className="px-5 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg disabled:opacity-50 transition-all flex items-center gap-1 hover:gap-2"
           >
-            Next
+            <span>Next</span> →
           </button>
         </div>
       </div>
