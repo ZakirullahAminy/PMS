@@ -31,7 +31,7 @@ function Login({ onLogin }) {
         className="space-y-6 p-8 rounded-xl bg-white shadow-2xl w-96 border border-gray-100"
       >
         <h2 className="text-2xl font-bold text-center text-gray-800">
-          Welcome Back
+          Welcome Back <br /> The Admin Password is 12345
         </h2>
 
         <div className="space-y-4">
