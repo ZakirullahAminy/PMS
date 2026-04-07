@@ -94,7 +94,7 @@ function Card() {
 
       <h2 className="text-xl font-semibold mb-3">Cards</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        {cards.length === 0 && <p>No cards yet.</p>}
+        {cards.length === 0 && <p>No cards yet try to add the cards first then you can see the card.</p>}
         {cards.map((card) => (
           <div
             key={card._id}
